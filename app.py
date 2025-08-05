@@ -9,7 +9,7 @@ import tempfile
 st.set_page_config(page_title="AlphaEvolve Math Proof Validator", layout="wide")
 
 st.title("AlphaEvolve Math Proof Validator")
-st.markdown("Cet outil génère et valide des démonstrations mathématiques en utilisant l'API OpenAI et Lean.")
+st.markdown("Cet outil génère et valide des démonstrations mathématiques en utilisant une IA et Lean.")
 
 # --- Fonction de validation Lean (adaptée du fichier fourni) ---
 def verify_lean_file(file_path: str) -> tuple[bool, str]:
@@ -48,14 +48,14 @@ def verify_lean_file(file_path: str) -> tuple[bool, str]:
 
 # --- Interface utilisateur Streamlit ---
 
-# Sidebar pour les configurations OpenAI
-st.sidebar.header("Configuration OpenAI")
-openai_api_base = st.sidebar.text_input("URL de l'API OpenAI", value="http://localhost:11434/v1/")
-openai_api_key = st.sidebar.text_input("Clé API OpenAI", type="password")
+# Sidebar pour les configurations de l'IA
+st.sidebar.header("Configuration de l'IA")
+openai_api_base = st.sidebar.text_input("URL de l'API", value="http://localhost:11434/v1/")
+openai_api_key = st.sidebar.text_input("Clé API (si requise)", type="password", help="Non requise pour les modèles locaux comme Ollama.")
 openai_model = st.sidebar.text_input(
     "Modèle",
     value="mistral-small3.2:latest", # Valeur par défaut
-    help="Entrez le nom du modèle OpenAI à utiliser pour la génération de démonstrations (ex: gpt-4o, gpt-3.5-turbo, etc.)."
+    help="Entrez le nom du modèle à utiliser pour la génération de démonstrations (ex: gpt-4o, mistral-small3.2:latest, etc.)."
 )
 
 # Zone d'entrée principale
@@ -68,13 +68,13 @@ math_problem_input = st.text_area(
 )
 
 if st.button("Lancer le processus de validation"):
-    if not openai_api_key:
-        st.error("Veuillez entrer votre clé API OpenAI.")
-    elif not math_problem_input:
+    if not math_problem_input:
         st.error("Veuillez décrire le problème mathématique.")
     else:
-        st.info("Processus lancé... Génération de la démonstration par OpenAI.")
-        openai.api_key = openai_api_key
+        st.info("Processus lancé... Génération de la démonstration par l'IA.")
+        # Pour Ollama ou les API locales, une clé n'est souvent pas nécessaire,
+        # mais la bibliothèque peut en exiger une. On utilise une valeur factice si aucune n'est fournie.
+        openai.api_key = openai_api_key if openai_api_key else "ollama"
         openai.api_base = openai_api_base
 
         max_attempts = 3  # Nombre maximal de tentatives de génération/validation
@@ -89,7 +89,7 @@ if st.button("Lancer le processus de validation"):
             st.subheader(f"Tentative {attempt}/{max_attempts}")
 
             try:
-                # --- Étape 1: Génération de la démonstration par OpenAI ---
+                # --- Étape 1: Génération de la démonstration par l'IA ---
                 prompt = (
                     f"Vous êtes un assistant de preuve mathématique. "
                     f"Générez une démonstration formelle en langage Lean 4 pour la conjecture/problème suivant :\n\n"
@@ -103,7 +103,7 @@ if st.button("Lancer le processus de validation"):
                     prompt += f"Les tentatives précédentes ont échoué avec les erreurs Lean suivantes :\n```\n{lean_error_feedback}\n```\n" \
                               f"Veuillez corriger ces erreurs et fournir une démonstration valide."
 
-                with st.spinner(f"Génération de la démonstration par OpenAI (Tentative {attempt})..."):
+                with st.spinner(f"Génération de la démonstration par l'IA (Tentative {attempt})..."):
                     response = openai.chat.completions.create(
                         model=openai_model,
                         messages=[
@@ -125,7 +125,7 @@ if st.button("Lancer le processus de validation"):
                     else:
                         st.warning("Le code Lean généré ne semble pas être correctement formaté avec des balises ```lean et ```. Tentative d'utilisation du texte brut.")
                 
-                st.subheader("Démonstration Générée par OpenAI (Lean 4)")
+                st.subheader("Démonstration Générée par l'IA (Lean 4)")
                 st.code(generated_proof_code, language="lean")
 
                 # --- Étape 2: Sauvegarde temporaire et validation par Lean ---
@@ -150,7 +150,7 @@ if st.button("Lancer le processus de validation"):
                 st.success("Processus terminé. Fichier temporaire nettoyé.")
 
             except openai.APIError as e:
-                st.error(f"Erreur de l'API OpenAI: {e}")
+                st.error(f"Erreur de l'API: {e}")
                 st.error("Vérifiez votre clé API et l'URL de l'API.")
                 break # Exit loop on API error
             except Exception as e:
@@ -162,7 +162,7 @@ if st.button("Lancer le processus de validation"):
             st.success("La démonstration finale est valide!")
         else:
             st.error("Impossible de générer une démonstration valide après plusieurs tentatives.")
-            st.warning("Veuillez revoir le problème mathématique ou les configurations OpenAI.")
+            st.warning("Veuillez revoir le problème mathématique ou les configurations de l'IA.")
 
 st.markdown("---")
 st.markdown("Pour exécuter cette application: `streamlit run app.py` dans votre terminal.")
